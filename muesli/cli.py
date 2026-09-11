@@ -119,8 +119,16 @@ def latest_session(notes_dir: Path) -> Path:
 def cmd_list(args) -> None:
     notes_dir = load_config().notes_dir
     if not notes_dir.exists():
+        if args.json:
+            print("[]")
         return
-    for p in sorted(p for p in notes_dir.iterdir() if p.is_dir())[-args.n:]:
+    sessions = sorted(p for p in notes_dir.iterdir() if p.is_dir())[-args.n:]
+    if args.json:  # newest first; consumed by the bar widgets
+        print(json.dumps([{"name": p.name, "path": str(p), "enhanced": (p / "enhanced.md").exists(),
+                           "lines": sum(1 for ln in open(p / "transcript.md", encoding="utf-8") if ln.startswith("**[")) if (p / "transcript.md").exists() else 0}
+                          for p in reversed(sessions)]))
+        return
+    for p in sessions:
         flags = "E" if (p / "enhanced.md").exists() else " "
         print(f"{flags} {p.name}")
 
@@ -180,7 +188,8 @@ def main(argv: list[str] | None = None) -> None:
     sp = sub.add_parser("toggle", help="start/stop recording"); sp.add_argument("title", nargs="*"); sp.set_defaults(func=cmd_toggle)
     sp = sub.add_parser("enhance", help="generate enhanced notes"); sp.add_argument("-t", "--template")
     sp.add_argument("--tone"); sp.add_argument("-s", "--session", help="session dir or 'latest'"); sp.set_defaults(func=cmd_enhance)
-    sp = sub.add_parser("list", help="list recent sessions"); sp.add_argument("-n", type=int, default=10); sp.set_defaults(func=cmd_list)
+    sp = sub.add_parser("list", help="list recent sessions"); sp.add_argument("-n", type=int, default=10)
+    sp.add_argument("--json", action="store_true"); sp.set_defaults(func=cmd_list)
     sp = sub.add_parser("templates", help="list templates and tones"); sp.set_defaults(func=cmd_templates)
     sp = sub.add_parser("daemon", help="run the daemon in the foreground"); sp.set_defaults(func=cmd_daemon)
     sp = sub.add_parser("quit", help="stop the daemon"); sp.set_defaults(func=cmd_quit)

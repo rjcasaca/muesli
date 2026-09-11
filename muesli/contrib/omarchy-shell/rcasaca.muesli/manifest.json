@@ -6,27 +6,123 @@
   "author": "rcasaca",
   "license": "MIT",
   "description": "Recording indicator for muesli, the Granola-style meeting transcriber. Shows idle / meeting detected / recording, with click actions to start, stop, enhance and open the TUI.",
-  "kinds": ["bar-widget"],
+  "kinds": [
+    "bar-widget"
+  ],
   "activation": "on-demand",
   "entryPoints": {
     "barWidget": "BarWidget.qml"
   },
   "barWidget": {
     "displayName": "muesli",
-    "description": "Meeting recorder status: left-click start/stop, right-click enhance latest, middle-click open the TUI.",
+    "description": "Meeting recorder status with a flyout: live transcript, recent meetings, start/stop, enhance, open the TUI.",
     "category": "Productivity",
-    "aliases": ["muesli", "meeting", "recorder"],
+    "aliases": [
+      "muesli",
+      "meeting",
+      "recorder"
+    ],
     "allowMultiple": false,
     "defaultSection": "right",
     "defaults": {
       "pollSeconds": 2,
       "hideWhenIdle": false,
-      "hideWhenOff": true
+      "hideWhenOff": true,
+      "leftClick": "panel",
+      "rightClick": "toggle",
+      "middleClick": "enhance",
+      "panelWidth": 400,
+      "panelHeight": 620,
+      "transcriptLines": 8
     },
     "schema": [
-      { "key": "pollSeconds", "type": "integer", "label": "Poll interval (s)", "min": 1, "max": 30, "step": 1, "defaultValue": 2, "description": "How often to ask the muesli daemon for its status." },
-      { "key": "hideWhenIdle", "type": "boolean", "label": "Hide while idle", "defaultValue": false, "description": "Only show the widget when a meeting is detected or a recording is running." },
-      { "key": "hideWhenOff", "type": "boolean", "label": "Hide when the daemon is not running", "defaultValue": true }
+      {
+        "key": "pollSeconds",
+        "type": "integer",
+        "label": "Poll interval (s)",
+        "min": 1,
+        "max": 30,
+        "step": 1,
+        "defaultValue": 2,
+        "description": "How often to ask the muesli daemon for its status."
+      },
+      {
+        "key": "hideWhenIdle",
+        "type": "boolean",
+        "label": "Hide while idle",
+        "defaultValue": false,
+        "description": "Only show the widget when a meeting is detected or a recording is running."
+      },
+      {
+        "key": "hideWhenOff",
+        "type": "boolean",
+        "label": "Hide when the daemon is not running",
+        "defaultValue": true
+      },
+      {
+        "key": "leftClick",
+        "type": "enum",
+        "label": "Left click",
+        "options": [
+          "panel",
+          "toggle",
+          "enhance",
+          "tui"
+        ],
+        "defaultValue": "panel",
+        "description": "panel = open the flyout · toggle = start/stop recording · enhance = enhance latest · tui = open the terminal UI"
+      },
+      {
+        "key": "rightClick",
+        "type": "enum",
+        "label": "Right click",
+        "options": [
+          "panel",
+          "toggle",
+          "enhance",
+          "tui"
+        ],
+        "defaultValue": "toggle"
+      },
+      {
+        "key": "middleClick",
+        "type": "enum",
+        "label": "Middle click",
+        "options": [
+          "panel",
+          "toggle",
+          "enhance",
+          "tui"
+        ],
+        "defaultValue": "enhance"
+      },
+      {
+        "key": "panelWidth",
+        "type": "integer",
+        "label": "Flyout width",
+        "min": 300,
+        "max": 800,
+        "step": 10,
+        "defaultValue": 400
+      },
+      {
+        "key": "panelHeight",
+        "type": "integer",
+        "label": "Flyout max height",
+        "min": 300,
+        "max": 1000,
+        "step": 20,
+        "defaultValue": 620
+      },
+      {
+        "key": "transcriptLines",
+        "type": "integer",
+        "label": "Transcript lines shown",
+        "min": 3,
+        "max": 30,
+        "step": 1,
+        "defaultValue": 8
+      }
     ]
   }
 }

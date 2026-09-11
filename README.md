@@ -15,7 +15,7 @@ Granola doesn't ship for Linux. muesli does the part that matters — capture bo
 - **Near-live transcript** in 30 s chunks, written to `transcript.md` after every chunk. Kill the app mid-meeting and nothing is lost.
 - **Enhance** with any CLI — Claude Code, grok, ollama — using **templates** (general, standup, one-on-one, client-call, interview, brainstorm, or your own) and **tones** (concise, formal, casual, detailed, or your own).
 - **Meeting detection**: the daemon watches PipeWire; when Teams / Zoom / a browser opens the microphone you get a notification and a pulsing bar icon. Optional auto-start/auto-stop.
-- **Bar widget** for Omarchy (omarchy-shell) or any Waybar setup: left-click start/stop, right-click enhance the latest meeting, middle-click open the TUI.
+- **Bar widget** for Omarchy (omarchy-shell) or any Waybar setup: left-click opens a flyout (live transcript, recent meetings, start/stop, enhance, TUI), right-click start/stop, middle-click enhance.
 - **Custom vocabulary** to bias the recogniser toward your names and jargon.
 - One folder per meeting: `transcript.md`, `notes.md` (what you typed), `prompt.md`, `enhanced.md`.
 

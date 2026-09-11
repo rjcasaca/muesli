@@ -64,11 +64,11 @@ class Muesli(App):
                 line = await reader.readline()
                 if not line:
                     break
-                self.on_event(json.loads(line))
+                self.on_daemon_event(json.loads(line))
         except Exception as e:
             self.log_ui(f"[red]lost connection to daemon: {e}[/red]")
 
-    def on_event(self, ev: dict) -> None:
+    def on_daemon_event(self, ev: dict) -> None:
         kind = ev.get("event")
         if kind == "line":
             self.write_line(ev["t"], ev["speaker"], ev["text"])

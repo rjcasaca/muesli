@@ -20,7 +20,7 @@ if [ -d ~/.config/omarchy/plugins ] && pgrep -x quickshell > /dev/null; then
   omarchy bar put rcasaca.muesli --section right 2>/dev/null || echo "   (add it later with: omarchy bar put rcasaca.muesli --section right)"
   cat << 'MSG'
 
-Done. The muesli widget is on your omarchy-shell bar (left-click start/stop, right-click enhance, middle-click TUI).
+Done. The muesli widget is on your omarchy-shell bar: left-click opens the flyout, right-click start/stop, middle-click enhance.
 API keys go in ~/.config/muesli/env  (e.g. GROQ_API_KEY=..., XAI_API_KEY=...)
 Then: systemctl --user restart muesli
 MSG
