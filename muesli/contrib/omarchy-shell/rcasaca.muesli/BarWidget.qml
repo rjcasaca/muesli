@@ -54,6 +54,7 @@ BarWidget {
   function togglePanel() { if (panelLoader.item) panelLoader.item.toggle() }
   function open() { if (panelLoader.item) panelLoader.item.open() }
   function close() { if (panelLoader.item) panelLoader.item.close() }
+  function openSettings() { if (panelLoader.item) { panelLoader.item.view = "settings"; panelLoader.item.open() } }
   readonly property bool popoutSwitchClosing: panelLoader.item ? panelLoader.item.popoutSwitchClosing === true : false
   function closeForPopoutSwitch() { if (panelLoader.item) panelLoader.item.closeForPopoutSwitch() }
 
@@ -66,6 +67,7 @@ BarWidget {
     else if (action === "toggle") toggle()
     else if (action === "enhance") enhance()
     else if (action === "tui") openTui()
+    else if (action === "settings") openSettings()
   }
 
   visible: !(state === "off" && hideWhenOff) && !(state === "idle" && hideWhenIdle)
@@ -93,6 +95,7 @@ BarWidget {
     function open(): void { root.open() }
     function close(): void { root.close() }
     function togglePanel(): void { root.togglePanel() }
+    function settings(): void { root.openSettings() }
   }
 
   Process {

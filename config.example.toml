@@ -32,13 +32,14 @@ auto_stop_seconds = 60            # when recording was auto-started, stop this l
 notify = true                     # notify-send when a meeting is detected and nothing is recording
 
 [enhance]
-# Run by /enhance. The composed prompt (template + tone + transcript + your notes) is written to prompt.md
-# and piped to stdin. Placeholders: {prompt_file} {transcript} {notes} {output} {dir}
+# Which CLI turns prompt.md into enhanced.md. The prompt (template + tone + transcript + your notes) goes to stdin.
+backend = "claude"                # "claude" (Claude Code; reports real token usage), "grok", "ollama", "custom"
+model = ""                        # "" = the backend's default; e.g. "claude-sonnet-5", "llama3.1"
+# backend = "custom" runs this through the shell instead. Placeholders: {prompt_file} {transcript} {notes} {output} {dir}
 command = 'claude -p < "{prompt_file}" > "{output}"'
-# other examples:
-#   command = 'grok -p < "{prompt_file}" > "{output}"'
-#   command = 'ollama run llama3.1 < "{prompt_file}" > "{output}"'
-default_template = "general"      # built-in: general, standup, one-on-one, client-call, interview, brainstorm
+default_template = "general"      # built-in: general, standup, one-on-one, team-meeting, project-kickoff, retrospective,
+                                  #   decision-meeting, design-review, client-call, sales-call, customer-discovery,
+                                  #   interview, brainstorm, lecture, board-meeting, all-hands
 default_tone = "concise"          # or drop your own in ~/.config/muesli/templates/<name>.md
 
 [enhance.tones]
@@ -46,3 +47,15 @@ concise = "Be terse. Prefer bullets over prose. No filler, no restating the obvi
 formal = "Professional, neutral tone suitable for sharing with clients or management."
 casual = "Relaxed, first person, like notes written to yourself."
 detailed = "Preserve nuance. Include supporting detail and short direct quotes where they add precision."
+
+[costs]
+# Only used to *estimate* spend in `muesli usage` and the bar widget; nothing is billed by muesli.
+llm_input_per_mtok = 3.0          # fallback $/M tokens when the enhance backend does not report cost (claude does)
+llm_output_per_mtok = 15.0
+
+[costs.stt_per_hour]              # $ per hour of audio, by STT model (falls back to provider name)
+"whisper-large-v3-turbo" = 0.04   # Groq
+"whisper-large-v3" = 0.111        # Groq
+"whisper-1" = 0.36                # OpenAI
+xai = 0.10
+local = 0.0

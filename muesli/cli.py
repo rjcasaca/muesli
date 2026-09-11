@@ -9,8 +9,20 @@ import sys
 import time
 from pathlib import Path
 
-from . import __version__
-from .config import CONFIG_DIR, CONFIG_PATH, SOCKET_PATH, load_config
+from . import __version__, usage
+from .config import (
+    CONFIG_DIR,
+    CONFIG_PATH,
+    ENHANCE_BACKENDS,
+    ENV_PATH,
+    SOCKET_PATH,
+    USER_TEMPLATES,
+    flatten,
+    load_config,
+    read_env_file,
+    set_config_value,
+    write_env_value,
+)
 
 
 # ---------- client ----------
@@ -136,10 +148,110 @@ def cmd_list(args) -> None:
 
 
 def cmd_templates(args) -> None:
-    ensure_daemon()
-    t = call({"cmd": "templates"})
-    print("templates:", ", ".join(t["templates"]))
-    print("tones:    ", ", ".join(t["tones"]))
+    from .engine import list_templates, template_info
+
+    cfg = load_config()
+    if args.action == "edit":
+        # Editing a built-in copies it to the user dir first, so updates never clobber the change.
+        templates = list_templates()
+        if args.name not in templates:
+            raise RuntimeError(f"unknown template {args.name!r}")
+        USER_TEMPLATES.mkdir(parents=True, exist_ok=True)
+        dest = USER_TEMPLATES / f"{args.name}.md"
+        if templates[args.name] != dest:
+            dest.write_text(templates[args.name].read_text())
+        print(dest)
+        return
+    if args.action == "new":
+        USER_TEMPLATES.mkdir(parents=True, exist_ok=True)
+        dest = USER_TEMPLATES / f"{args.name}.md"
+        if dest.exists():
+            raise RuntimeError(f"{dest} already exists")
+        dest.write_text(list_templates()["general"].read_text())
+        print(dest)
+        return
+    if args.json:
+        print(json.dumps({"templates": template_info(), "tones": [{"name": k, "text": v} for k, v in cfg.enhance.tones.items()],
+                          "default_template": cfg.enhance.default_template, "default_tone": cfg.enhance.default_tone,
+                          "user_dir": str(USER_TEMPLATES)}))
+        return
+    print("templates:", ", ".join(sorted(list_templates())))
+    print("tones:    ", ", ".join(sorted(cfg.enhance.tones)))
+
+
+def _reload_daemon() -> None:
+    if daemon_running():
+        call({"cmd": "reload"})
+
+
+def cmd_config(args) -> None:
+    cfg = load_config()
+    flat = flatten(cfg.as_dict())
+    if args.action == "show":
+        d = cfg.as_dict()
+        d["backends"] = list(ENHANCE_BACKENDS)
+        d["path"] = str(CONFIG_PATH)
+        print(json.dumps(d, indent=None if args.json else 2, ensure_ascii=False))
+        return
+    if args.action == "get":
+        if args.key not in flat:
+            raise RuntimeError(f"unknown key {args.key!r}")
+        v = flat[args.key]
+        print(json.dumps(v) if args.json or not isinstance(v, str) else v)
+        return
+    # set: coerce the text to the type of the current value so `set detect.auto_start true` does the right thing
+    if args.key not in flat and not args.key.startswith(("enhance.tones.", "costs.stt_per_hour.")):
+        raise RuntimeError(f"unknown key {args.key!r} — see `muesli config show`")
+    raw = " ".join(args.value)
+    cur = flat.get(args.key, "")
+    if args.json:
+        val = json.loads(raw)
+    elif isinstance(cur, bool):
+        val = raw.strip().lower() in ("1", "true", "yes", "on")
+    elif isinstance(cur, int):
+        val = int(raw)
+    elif isinstance(cur, float):
+        val = float(raw)
+    elif isinstance(cur, list):
+        val = [x.strip() for x in raw.split(",") if x.strip()]
+    else:
+        val = raw
+    if args.key == "enhance.backend" and val not in ENHANCE_BACKENDS:
+        raise RuntimeError(f"backend must be one of {', '.join(ENHANCE_BACKENDS)}")
+    set_config_value(args.key, val)
+    _reload_daemon()
+    print(f"{args.key} = {json.dumps(val, ensure_ascii=False)}")
+
+
+def cmd_keys(args) -> None:
+    """Which API keys the current config needs and whether ~/.config/muesli/env provides them. Never prints values."""
+    cfg = load_config()
+    env = read_env_file()
+    if args.set:
+        name, _, value = args.set.partition("=")
+        if not name or not value:
+            raise RuntimeError("usage: muesli keys --set NAME=value")
+        write_env_value(name.strip(), value.strip())
+        print(f"{name.strip()} written to {ENV_PATH} — restart the daemon to pick it up: systemctl --user restart muesli")
+        return
+    needed = []
+    if cfg.stt.provider == "openai":
+        needed.append(cfg.stt.api_key_env)
+    elif cfg.stt.provider == "xai":
+        needed.append(cfg.stt.xai_api_key_env)
+    rows = [{"name": n, "set": bool(env.get(n)), "hint": (env.get(n, "")[:4] + "…") if env.get(n) else ""} for n in needed]
+    if args.json:
+        print(json.dumps({"keys": rows, "env_file": str(ENV_PATH)}))
+        return
+    for r in rows:
+        print(f"{r['name']:<16} {'set ' + r['hint'] if r['set'] else 'MISSING'}")
+    if not rows:
+        print("local provider — no API key needed")
+
+
+def cmd_usage(args) -> None:
+    s = usage.summary(load_config(), args.period)
+    print(json.dumps(s) if args.json else usage.format_summary(s))
 
 
 def cmd_daemon(args) -> None:
@@ -192,7 +304,18 @@ def main(argv: list[str] | None = None) -> None:
     sp.add_argument("--tone"); sp.add_argument("-s", "--session", help="session dir or 'latest'"); sp.set_defaults(func=cmd_enhance)
     sp = sub.add_parser("list", help="list recent sessions"); sp.add_argument("-n", type=int, default=10)
     sp.add_argument("--json", action="store_true"); sp.set_defaults(func=cmd_list)
-    sp = sub.add_parser("templates", help="list templates and tones"); sp.set_defaults(func=cmd_templates)
+    sp = sub.add_parser("templates", help="list templates and tones"); sp.add_argument("--json", action="store_true")
+    sp.add_argument("action", nargs="?", choices=["list", "edit", "new"], default="list")
+    sp.add_argument("name", nargs="?"); sp.set_defaults(func=cmd_templates)
+    sp = sub.add_parser("config", help="read or change config.toml (the daemon reloads)")
+    sp.add_argument("action", choices=["show", "get", "set"]); sp.add_argument("key", nargs="?")
+    sp.add_argument("value", nargs="*"); sp.add_argument("--json", action="store_true", help="value is JSON / output JSON")
+    sp.set_defaults(func=cmd_config)
+    sp = sub.add_parser("keys", help="check which API keys are needed and set (never prints them)")
+    sp.add_argument("--json", action="store_true"); sp.add_argument("--set", metavar="NAME=value"); sp.set_defaults(func=cmd_keys)
+    sp = sub.add_parser("usage", help="transcription minutes, enhance tokens and estimated cost")
+    sp.add_argument("period", nargs="?", choices=list(usage.PERIODS), default="month")
+    sp.add_argument("--json", action="store_true"); sp.set_defaults(func=cmd_usage)
     sp = sub.add_parser("daemon", help="run the daemon in the foreground"); sp.set_defaults(func=cmd_daemon)
     sp = sub.add_parser("quit", help="stop the daemon"); sp.set_defaults(func=cmd_quit)
     sp = sub.add_parser("tui", help="open the terminal UI (default)"); sp.set_defaults(func=cmd_tui)

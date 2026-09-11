@@ -2,14 +2,18 @@
 from __future__ import annotations
 
 import asyncio
+import json
 import re
+import shlex
+import time
 from collections.abc import Awaitable, Callable
 from datetime import datetime
 from importlib import resources
 from pathlib import Path
 
+from . import usage
 from .audio import BYTES_PER_SEC, PwCapture, peak, pipewire_available
-from .config import USER_TEMPLATES, Config
+from .config import USER_TEMPLATES, Config, EnhanceConfig
 from .stt import Backend, get_backend
 
 Emit = Callable[[dict], Awaitable[None]]
@@ -36,6 +40,32 @@ def list_templates() -> dict[str, Path]:
     return out
 
 
+def template_info() -> list[dict]:
+    """Name, human title, first-line description and whether it is the user's own copy — for UIs."""
+    rows = []
+    for name, path in sorted(list_templates().items()):
+        first = next((ln.strip() for ln in path.read_text().splitlines() if ln.strip()), "")
+        rows.append({
+            "name": name,
+            "title": name.replace("-", " ").capitalize().replace("One on one", "One-on-one"),
+            "description": first[:160],
+            "path": str(path),
+            "user": path.parent == USER_TEMPLATES,
+        })
+    return rows
+
+
+def enhance_argv(e: EnhanceConfig) -> list[str] | None:
+    """argv for a built-in backend (prompt on stdin, notes on stdout), or None for a shell `command`."""
+    if e.backend == "claude":
+        return ["claude", "-p", "--output-format", "json"] + (["--model", e.model] if e.model else [])
+    if e.backend == "grok":
+        return ["grok", "-p"] + (["--model", e.model] if e.model else [])
+    if e.backend == "ollama":
+        return ["ollama", "run", e.model or "llama3.1"]
+    return None
+
+
 class Session:
     def __init__(self, cfg: Config, emit: Emit):
         self.cfg = cfg
@@ -54,6 +84,11 @@ class Session:
         self._tasks: list[asyncio.Task] = []
         self._consumed = 0
         self._inflight: set[asyncio.Task] = set()
+
+    @property
+    def stt_model(self) -> str:
+        st = self.cfg.stt
+        return st.local_model if st.provider == "local" else ("grok-stt" if st.provider == "xai" else st.model)
 
     # ---------- status ----------
     def status(self, extra: dict | None = None) -> dict:
@@ -159,7 +194,11 @@ class Session:
             results = await asyncio.gather(
                 *(self.backend.transcribe(pcm) for pcm, _ in jobs), return_exceptions=True
             )
-            for (_, speaker), res in zip(jobs, results):
+            for (pcm, speaker), res in zip(jobs, results):
+                usage.record({"kind": "stt", "provider": self.cfg.stt.provider, "model": self.stt_model,
+                              "seconds": round(len(pcm) / BYTES_PER_SEC, 2), "speaker": speaker,
+                              "session": self.session_dir.name if self.session_dir else "",
+                              "error": str(res)[:200] if isinstance(res, Exception) else ""})
                 if isinstance(res, Exception):
                     await self.emit({"event": "error", "message": f"stt {speaker} @ {mmss(offset)}: {res}"})
                     continue
@@ -212,19 +251,58 @@ class Session:
         prompt_file = sdir / "prompt.md"
         output = sdir / "enhanced.md"
         prompt_file.write_text(prompt)
-        cmd = e.command.format(
-            prompt_file=prompt_file, transcript=sdir / "transcript.md", notes=sdir / "notes.md",
-            output=output, dir=sdir,
-        )
+        argv = enhance_argv(e)
+        if argv:
+            cmd = shlex.join(argv) + f' < "{prompt_file}" > "{output}"'
+        else:
+            cmd = e.command.format(
+                prompt_file=prompt_file, transcript=sdir / "transcript.md", notes=sdir / "notes.md",
+                output=output, dir=sdir,
+            )
         await self.emit({"event": "enhancing", "command": cmd, "session_dir": str(sdir)})
-        proc = await asyncio.create_subprocess_shell(
-            cmd, cwd=sdir, stdin=asyncio.subprocess.DEVNULL,
-            stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE,
-        )
-        _, err = await proc.communicate()
-        result = {"ok": proc.returncode == 0, "output": str(output), "returncode": proc.returncode,
-                  "stderr": err.decode(errors="ignore")[-800:]}
+        t0 = time.monotonic()
+        if argv:
+            proc = await asyncio.create_subprocess_exec(
+                *argv, cwd=sdir, stdin=asyncio.subprocess.PIPE,
+                stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE,
+            )
+            out, err = await proc.communicate(prompt.encode())
+        else:
+            proc = await asyncio.create_subprocess_shell(
+                cmd, cwd=sdir, stdin=asyncio.subprocess.DEVNULL,
+                stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE,
+            )
+            out, err = await proc.communicate()
+        ok = proc.returncode == 0
+        meter = {"kind": "enhance", "backend": e.backend, "model": e.model, "template": template, "tone": tone,
+                 "session": sdir.name, "ok": ok, "duration": round(time.monotonic() - t0, 1)}
+        if argv:
+            text = out.decode(errors="ignore")
+            if e.backend == "claude" and ok:
+                # `claude -p --output-format json` wraps the answer with real usage numbers.
+                try:
+                    j = json.loads(text)
+                    text = str(j.get("result", ""))
+                    u = j.get("usage", {})
+                    meter.update({"input_tokens": int(u.get("input_tokens", 0)) + int(u.get("cache_read_input_tokens", 0))
+                                  + int(u.get("cache_creation_input_tokens", 0)),
+                                  "output_tokens": int(u.get("output_tokens", 0)),
+                                  "cost_usd": j.get("total_cost_usd"),
+                                  "model": e.model or next(iter(j.get("modelUsage", {})), "")})
+                    if j.get("is_error"):
+                        ok = False
+                        err = text.encode()
+                except (json.JSONDecodeError, TypeError, ValueError):
+                    pass
+            if ok:
+                output.write_text(text)
+        if "input_tokens" not in meter:  # no usage from the backend: ~4 chars per token
+            out_len = len(output.read_text()) if ok and output.exists() else 0
+            meter.update({"input_tokens": len(prompt) // 4, "output_tokens": out_len // 4, "tokens_estimated": True})
+        usage.record(meter)
+        result = {"ok": ok, "output": str(output), "returncode": proc.returncode,
+                  "stderr": err.decode(errors="ignore")[-800:], "usage": meter}
         await self.emit({"event": "enhanced", **result})
-        if not result["ok"]:
+        if not ok:
             raise RuntimeError(f"enhance command failed ({proc.returncode}): {result['stderr']}")
         return result

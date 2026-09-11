@@ -13,9 +13,10 @@ Granola doesn't ship for Linux. muesli does the part that matters — capture bo
 - **Mic + system audio**, always. Two PipeWire streams, so the transcript is labelled `Me:` / `Them:` with no diarization model.
 - **STT you choose**: any OpenAI-compatible endpoint (Groq, OpenAI, a local whisper server), **xAI Grok STT**, or fully **local** via faster-whisper or whisper.cpp.
 - **Near-live transcript** in 30 s chunks, written to `transcript.md` after every chunk. Kill the app mid-meeting and nothing is lost.
-- **Enhance** with any CLI — Claude Code, grok, ollama — using **templates** (general, standup, one-on-one, client-call, interview, brainstorm, or your own) and **tones** (concise, formal, casual, detailed, or your own).
+- **Enhance** with any CLI — Claude Code, grok, ollama, or a custom command — using **16 Granola-style templates** (general, standup, one-on-one, team-meeting, project-kickoff, retrospective, decision-meeting, design-review, client-call, sales-call, customer-discovery, interview, brainstorm, lecture, board-meeting, all-hands — or your own) and **tones** (concise, formal, casual, detailed, or your own). Markdown in, markdown out.
+- **Consumption tracking**: every STT request and enhance run is logged; `muesli usage` (and the bar flyout) show minutes transcribed, tokens and estimated cost. Claude Code reports real token usage and cost.
 - **Meeting detection**: the daemon watches PipeWire; when Teams / Zoom / a browser opens the microphone you get a notification and a pulsing bar icon. Optional auto-start/auto-stop.
-- **Bar widget** for Omarchy (omarchy-shell) or any Waybar setup: left-click opens a flyout (live transcript, recent meetings, start/stop, enhance, TUI), right-click start/stop, middle-click enhance.
+- **Bar widget** for Omarchy (omarchy-shell) or any Waybar setup: left-click opens a flyout (live transcript, recent meetings, start/stop, enhance, TUI, and a **settings view** for the STT provider, API key, AI backend, templates, detection and consumption), right-click start/stop, middle-click enhance.
 - **Custom vocabulary** to bias the recogniser toward your names and jargon.
 - One folder per meeting: `transcript.md`, `notes.md` (what you typed), `prompt.md`, `enhanced.md`.
 
@@ -61,13 +62,24 @@ muesli                    # opens the TUI (starts the daemon if needed)
 /enhance client-call formal
 ```
 
-CLI equivalents: `muesli start|stop|toggle|status|enhance [-t template] [--tone tone] [-s latest]|list|templates`.
+CLI equivalents: `muesli start|stop|toggle|status|enhance [-t template] [--tone tone] [-s latest]|list|templates|usage`.
 
 The TUI is only a window onto the daemon: closing it never stops a recording.
 
 ## Configure
 
-Everything lives in `~/.config/muesli/config.toml` — see [`config.example.toml`](config.example.toml). Highlights:
+Everything lives in `~/.config/muesli/config.toml` — see [`config.example.toml`](config.example.toml). Edit it by hand, from the bar flyout's ⚙ settings view, or with the CLI (the daemon reloads on every change):
+
+```sh
+muesli config show                       # the effective config as JSON
+muesli config set stt.provider xai       # values are coerced to the key's type; --json for lists/objects
+muesli config set detect.auto_start true
+muesli config set enhance.backend ollama && muesli config set enhance.model llama3.1
+muesli keys                              # which API key the current provider needs, and whether ~/.config/muesli/env has it
+muesli keys --set GROQ_API_KEY=gsk_...   # then: systemctl --user restart muesli
+```
+
+Highlights:
 
 | key | what |
 |---|---|
@@ -75,10 +87,25 @@ Everything lives in `~/.config/muesli/config.toml` — see [`config.example.toml
 | `vocabulary` | list of names/terms to bias transcription |
 | `detect.apps` | substrings of app names that count as a meeting; `[]` = any app on the mic |
 | `detect.auto_start` | record automatically when a meeting app opens the mic |
-| `enhance.command` | the CLI that turns `prompt.md` into `enhanced.md` |
+| `enhance.backend` / `enhance.model` | `claude` · `grok` · `ollama` · `custom`; the model is optional |
+| `enhance.command` | for `backend = "custom"`: the shell command that turns `prompt.md` into `enhanced.md` |
 | `enhance.tones` | add your own tones here |
+| `costs.*` | price table used to estimate spend in `muesli usage` — nothing is billed by muesli |
 
-Custom templates: drop `~/.config/muesli/templates/<name>.md` — the file is the instruction; the transcript and your notes are appended automatically. Same name as a built-in overrides it.
+Custom templates: `muesli templates new <name>` (or drop `~/.config/muesli/templates/<name>.md`) — the file is the instruction; the transcript and your notes are appended automatically. `muesli templates edit <name>` copies a built-in into your folder so updates never overwrite your changes; same name as a built-in overrides it.
+
+## Consumption
+
+```
+$ muesli usage            # today | month (default) | all
+usage · month
+  transcription    84.5 min in 169 requests  ≈ $0.056
+    openai/whisper-large-v3-turbo   84.5 min  $0.056
+  enhance        3 runs · 51,949 in / 336 out tokens  $0.150
+    claude/default                  3 runs  51,949/336 tok  $0.150
+```
+
+One JSON line per STT request and per enhance run lands in `~/.local/state/muesli/usage.jsonl`. STT cost is estimated from `[costs.stt_per_hour]`; Claude Code reports real tokens and API-equivalent cost (`--output-format json`), other backends are estimated at ~4 chars/token with `[costs] llm_*_per_mtok` and marked `~`.
 
 ## STT cost & choice
 

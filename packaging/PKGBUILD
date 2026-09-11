@@ -1,8 +1,8 @@
 # Maintainer: Ricardo Casaca
 pkgname=muesli-git
-pkgver=0.2.0
+pkgver=0.3.0
 pkgrel=1
-pkgdesc="Granola-style meeting transcriber for Linux: PipeWire capture, cloud/local Whisper, Waybar module, meeting detection"
+pkgdesc="Granola-style meeting transcriber for Linux: PipeWire capture, cloud/local Whisper, omarchy-shell/Waybar widget, meeting detection, usage tracking"
 arch=('any')
 url="https://github.com/rjcasaca/muesli"
 license=('MIT')

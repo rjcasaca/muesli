@@ -2,10 +2,10 @@
   "schemaVersion": 1,
   "id": "rcasaca.muesli",
   "name": "muesli",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "author": "rcasaca",
   "license": "MIT",
-  "description": "Recording indicator for muesli, the Granola-style meeting transcriber. Shows idle / meeting detected / recording, with click actions to start, stop, enhance and open the TUI.",
+  "description": "Recording indicator and flyout for muesli, the Granola-style meeting transcriber: live transcript, recent meetings, one-click enhance, plus settings for the STT provider, the AI backend, templates and consumption.",
   "kinds": [
     "bar-widget"
   ],
@@ -31,8 +31,8 @@
       "leftClick": "panel",
       "rightClick": "toggle",
       "middleClick": "enhance",
-      "panelWidth": 400,
-      "panelHeight": 620,
+      "panelWidth": 420,
+      "panelHeight": 640,
       "transcriptLines": 8
     },
     "schema": [
@@ -67,10 +67,11 @@
           "panel",
           "toggle",
           "enhance",
-          "tui"
+          "tui",
+          "settings"
         ],
         "defaultValue": "panel",
-        "description": "panel = open the flyout · toggle = start/stop recording · enhance = enhance latest · tui = open the terminal UI"
+        "description": "panel = open the flyout · toggle = start/stop recording · enhance = enhance latest · tui = terminal UI · settings = open the flyout on its settings view"
       },
       {
         "key": "rightClick",
@@ -80,7 +81,8 @@
           "panel",
           "toggle",
           "enhance",
-          "tui"
+          "tui",
+          "settings"
         ],
         "defaultValue": "toggle"
       },
@@ -92,7 +94,8 @@
           "panel",
           "toggle",
           "enhance",
-          "tui"
+          "tui",
+          "settings"
         ],
         "defaultValue": "enhance"
       },
@@ -103,7 +106,7 @@
         "min": 300,
         "max": 800,
         "step": 10,
-        "defaultValue": 400
+        "defaultValue": 420
       },
       {
         "key": "panelHeight",
@@ -112,7 +115,7 @@
         "min": 300,
         "max": 1000,
         "step": 20,
-        "defaultValue": 620
+        "defaultValue": 640
       },
       {
         "key": "transcriptLines",

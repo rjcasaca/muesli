@@ -1,6 +1,6 @@
 [project]
 name = "muesli"
-version = "0.2.0"
+version = "0.3.0"
 description = "Granola-style meeting transcriber for Linux: PipeWire capture, cloud or local Whisper, Waybar integration, meeting detection. Terminal only."
 readme = "README.md"
 license = { text = "MIT" }
