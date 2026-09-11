@@ -6,7 +6,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v5
-      - run: uv pip install --system ruff .
-      - run: ruff check muesli
-      - run: python -c "import muesli.cli, muesli.daemon, muesli.tui, muesli.stt, muesli.detect"
-      - run: muesli --version
+        with:
+          enable-cache: false
+      - run: uv venv && uv pip install ruff .
+      - run: .venv/bin/ruff check muesli
+      - run: .venv/bin/python -c "import muesli.cli, muesli.daemon, muesli.tui, muesli.stt, muesli.detect"
+      - run: .venv/bin/muesli --version
