@@ -90,7 +90,10 @@ class Muesli(App):
             u = ev.get("usage") or {}
             cost = f" · {'~' if u.get('tokens_estimated') or u.get('cost_usd') is None else ''}${(u.get('cost_usd') or 0):.3f}" if u else ""
             meter = f" [dim]({u.get('input_tokens', 0):,} in / {u.get('output_tokens', 0):,} out tok{cost})[/dim]" if u else ""
-            self.log_ui(f"[green]enhanced → {ev['output']}[/green]{meter}" if ev.get("ok") else f"[red]enhance failed: {ev.get('stderr')}[/red]")
+            if ev.get("ok"):
+                self.log_ui(f"[green]enhanced → {ev['output']}[/green]{meter}")
+            else:
+                self.log_ui(f"[red]enhance failed: {ev.get('stderr')}[/red]")
         elif kind == "status":
             meeting = self.st.get("meeting")
             self.st = ev
