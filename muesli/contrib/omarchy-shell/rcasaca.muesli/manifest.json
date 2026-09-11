@@ -1,0 +1,32 @@
+{
+  "schemaVersion": 1,
+  "id": "rcasaca.muesli",
+  "name": "muesli",
+  "version": "0.2.0",
+  "author": "rcasaca",
+  "license": "MIT",
+  "description": "Recording indicator for muesli, the Granola-style meeting transcriber. Shows idle / meeting detected / recording, with click actions to start, stop, enhance and open the TUI.",
+  "kinds": ["bar-widget"],
+  "activation": "on-demand",
+  "entryPoints": {
+    "barWidget": "BarWidget.qml"
+  },
+  "barWidget": {
+    "displayName": "muesli",
+    "description": "Meeting recorder status: left-click start/stop, right-click enhance latest, middle-click open the TUI.",
+    "category": "Productivity",
+    "aliases": ["muesli", "meeting", "recorder"],
+    "allowMultiple": false,
+    "defaultSection": "right",
+    "defaults": {
+      "pollSeconds": 2,
+      "hideWhenIdle": false,
+      "hideWhenOff": true
+    },
+    "schema": [
+      { "key": "pollSeconds", "type": "integer", "label": "Poll interval (s)", "min": 1, "max": 30, "step": 1, "defaultValue": 2, "description": "How often to ask the muesli daemon for its status." },
+      { "key": "hideWhenIdle", "type": "boolean", "label": "Hide while idle", "defaultValue": false, "description": "Only show the widget when a meeting is detected or a recording is running." },
+      { "key": "hideWhenOff", "type": "boolean", "label": "Hide when the daemon is not running", "defaultValue": true }
+    ]
+  }
+}

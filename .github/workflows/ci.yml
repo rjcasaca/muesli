@@ -1,0 +1,12 @@
+name: ci
+on: [push, pull_request]
+jobs:
+  lint-and-import:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - run: uv pip install --system ruff .
+      - run: ruff check muesli
+      - run: python -c "import muesli.cli, muesli.daemon, muesli.tui, muesli.stt, muesli.detect"
+      - run: muesli --version

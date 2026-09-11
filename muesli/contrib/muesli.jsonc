@@ -1,0 +1,13 @@
+// muesli Waybar module — include this file from your waybar config and add "custom/muesli" to a modules list.
+{
+  "custom/muesli": {
+    "exec": "muesli status --waybar",
+    "return-type": "json",
+    "interval": 2,
+    "format": "{}",
+    "on-click": "muesli toggle",
+    "on-click-right": "muesli enhance --session latest",
+    "on-click-middle": "$TERMINAL -e muesli tui",
+    "tooltip": true
+  }
+}

@@ -1,0 +1,22 @@
+# Maintainer: Ricardo Casaca
+pkgname=muesli-git
+pkgver=0.2.0
+pkgrel=1
+pkgdesc="Granola-style meeting transcriber for Linux: PipeWire capture, cloud/local Whisper, Waybar module, meeting detection"
+arch=('any')
+url="https://github.com/rjcasaca/muesli"
+license=('MIT')
+depends=('python' 'pipewire' 'pipewire-audio' 'python-textual' 'python-httpx' 'libnotify')
+optdepends=('python-faster-whisper: local transcription' 'whisper.cpp: local transcription (whisper-cli)')
+makedepends=('git' 'python-build' 'python-installer' 'python-hatchling')
+source=("git+$url.git")
+sha256sums=('SKIP')
+
+pkgver() { cd muesli; git describe --tags --long 2>/dev/null | sed 's/^v//;s/-/.r/;s/-/./' || printf "0.2.0.r%s.%s" "$(git rev-list --count HEAD)" "$(git rev-parse --short HEAD)"; }
+build() { cd muesli; python -m build --wheel --no-isolation; }
+package() {
+  cd muesli
+  python -m installer --destdir="$pkgdir" dist/*.whl
+  install -Dm644 muesli/contrib/muesli.service "$pkgdir/usr/lib/systemd/user/muesli.service"
+  install -Dm644 LICENSE "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
+}

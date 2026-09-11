@@ -1,0 +1,13 @@
+[Unit]
+Description=muesli meeting transcriber daemon
+After=pipewire.service graphical-session.target
+PartOf=graphical-session.target
+
+[Service]
+ExecStart=%h/.local/bin/muesli daemon
+Restart=on-failure
+RestartSec=3
+EnvironmentFile=-%h/.config/muesli/env
+
+[Install]
+WantedBy=graphical-session.target

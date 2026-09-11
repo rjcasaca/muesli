@@ -1,0 +1,10 @@
+__pycache__/
+*.pyc
+dist/
+build/
+*.egg-info/
+.venv/
+.ruff_cache/
+packaging/src/
+packaging/pkg/
+packaging/*.pkg.tar.*

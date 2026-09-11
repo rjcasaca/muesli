@@ -1,0 +1,48 @@
+# muesli configuration — copy to ~/.config/muesli/config.toml
+
+notes_dir = "~/notes/meetings"   # one folder per meeting: YYYY-MM-DD-HHMM-title/
+language = ""                     # "" = auto-detect, or "pt", "en", ...
+chunk_seconds = 30                # audio is transcribed in chunks of this size (latency vs. word splits)
+silence_peak = 400                # skip chunks whose peak sample is below this (0..32767)
+vocabulary = []                   # names / jargon to bias the recogniser, e.g. ["Arquiconsult", "Business Central"]
+
+[stt]
+provider = "openai"               # "openai" (any OpenAI-compatible endpoint, e.g. Groq), "xai" (Grok STT), "local"
+
+# provider = "openai"
+base_url = "https://api.groq.com/openai/v1"   # OpenAI: https://api.openai.com/v1 with model = "whisper-1"
+model = "whisper-large-v3-turbo"
+api_key_env = "GROQ_API_KEY"
+
+# provider = "xai"   (uses XAI_API_KEY, endpoint https://api.x.ai/v1/stt)
+xai_api_key_env = "XAI_API_KEY"
+
+# provider = "local"
+local_engine = "faster-whisper"   # "faster-whisper" (pip install 'muesli[local]') or "whisper-cpp" (whisper-cli on PATH)
+local_model = "small"             # faster-whisper size/name (tiny/base/small/medium/large-v3) or path to a whisper.cpp .bin
+local_device = "auto"             # faster-whisper: auto / cpu / cuda
+local_compute = "int8"            # faster-whisper: int8 / float16 / float32
+whisper_cpp_bin = "whisper-cli"
+
+[detect]
+enabled = true                    # watch PipeWire for apps that open the microphone
+apps = ["teams", "zoom", "chrome", "chromium", "brave", "firefox", "slack", "discord", "webex", "meet"]
+auto_start = false                # start recording by itself when a meeting app opens the mic
+auto_stop_seconds = 60            # when recording was auto-started, stop this long after the app releases the mic
+notify = true                     # notify-send when a meeting is detected and nothing is recording
+
+[enhance]
+# Run by /enhance. The composed prompt (template + tone + transcript + your notes) is written to prompt.md
+# and piped to stdin. Placeholders: {prompt_file} {transcript} {notes} {output} {dir}
+command = 'claude -p < "{prompt_file}" > "{output}"'
+# other examples:
+#   command = 'grok -p < "{prompt_file}" > "{output}"'
+#   command = 'ollama run llama3.1 < "{prompt_file}" > "{output}"'
+default_template = "general"      # built-in: general, standup, one-on-one, client-call, interview, brainstorm
+default_tone = "concise"          # or drop your own in ~/.config/muesli/templates/<name>.md
+
+[enhance.tones]
+concise = "Be terse. Prefer bullets over prose. No filler, no restating the obvious."
+formal = "Professional, neutral tone suitable for sharing with clients or management."
+casual = "Relaxed, first person, like notes written to yourself."
+detailed = "Preserve nuance. Include supporting detail and short direct quotes where they add precision."

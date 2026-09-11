@@ -1,0 +1,7 @@
+/* muesli Waybar styles — @import this from ~/.config/waybar/style.css */
+#custom-muesli { padding: 0 8px; }
+#custom-muesli.idle { opacity: 0.6; }
+#custom-muesli.meeting { color: #f9e2af; animation: muesli-pulse 1.5s ease-in-out infinite; }
+#custom-muesli.recording { color: #f38ba8; }
+#custom-muesli.off { opacity: 0.3; }
+@keyframes muesli-pulse { 0% { opacity: 1; } 50% { opacity: 0.4; } 100% { opacity: 1; } }
