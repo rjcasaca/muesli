@@ -124,8 +124,10 @@ def cmd_list(args) -> None:
         return
     sessions = sorted(p for p in notes_dir.iterdir() if p.is_dir())[-args.n:]
     if args.json:  # newest first; consumed by the bar widgets
-        print(json.dumps([{"name": p.name, "path": str(p), "enhanced": (p / "enhanced.md").exists(),
-                           "lines": sum(1 for ln in open(p / "transcript.md", encoding="utf-8") if ln.startswith("**[")) if (p / "transcript.md").exists() else 0}
+        def utterances(p):
+            t = p / "transcript.md"
+            return sum(1 for ln in t.open(encoding="utf-8") if ln.startswith("**[")) if t.exists() else 0
+        print(json.dumps([{"name": p.name, "path": str(p), "enhanced": (p / "enhanced.md").exists(), "lines": utterances(p)}
                           for p in reversed(sessions)]))
         return
     for p in sessions:
